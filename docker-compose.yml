@@ -1,0 +1,42 @@
+services:
+  fatiharge-db:
+    container_name: fatiharge-db
+    image: postgres:16.3
+    volumes:
+      - /var/lib/fatiharge-db:/var/lib/postgresql/data
+    labels:
+      - "traefik.tcp.routers.fatiharge-db.rule=HostSNI(`fatiharge-db.fatiharge.com`)"
+      - "traefik.tcp.routers.fatiharge-db.entrypoints=tcp"
+      - "traefik.tcp.routers.fatiharge-db.tls.certresolver=myresolver"
+      - "traefik.tcp.services.fatiharge-db.loadbalancer.server.port=5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - reverse-proxy
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+  fatiharge-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fatiharge-api
+    depends_on:
+      test-db:
+        condition: service_healthy
+    labels:
+      - "traefik.http.routers.fatiharge-api.rule=Host(`fatiharge-api.fatiharge.com`)"
+      - "traefik.http.routers.fatiharge-api.entrypoints=websecure"
+      - "traefik.http.routers.fatiharge-api.tls.certresolver=myresolver"
+    networks:
+      - reverse-proxy
+    environment:
+      SQLALCHEMY_DATABASE_URL: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@fatiharge-db:5432/${POSTGRES_DB}"
+
+networks:
+  reverse-proxy:
+    external: true
