@@ -26,7 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: fatiharge-api
     depends_on:
-      test-db:
+      fatiharge-db:
         condition: service_healthy
     labels:
       - "traefik.http.routers.fatiharge-api.rule=Host(`fatiharge-api.fatiharge.com`)"
